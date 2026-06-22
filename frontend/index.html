@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FPGA Traffic Light Controller</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">VLSI Course Project</p>
+      <h1>FPGA-Based Traffic Light Controller</h1>
+      <p class="subtitle">Virtual FPGA FSM simulator with NS/EW traffic lights, pedestrian request, emergency all-red, night blink mode, logs, reports, RTL and testbench access.</p>
+    </div>
+    <div class="backend-card">
+      <h2>Backend Connection</h2>
+      <p>Start FastAPI backend first, then run this frontend.</p>
+      <label for="backendUrl">Backend URL</label>
+      <div class="url-row">
+        <input id="backendUrl" value="http://127.0.0.1:8000" />
+        <button id="saveUrlBtn">Save</button>
+        <button id="testBtn" class="secondary">Test</button>
+      </div>
+      <p id="connectionStatus" class="status muted">Backend not tested yet.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="grid two">
+      <article class="panel signal-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Live Output</p>
+            <h2>Traffic Signals</h2>
+          </div>
+          <span id="safetyBadge" class="badge">Safety: --</span>
+        </div>
+
+        <div class="lights-grid">
+          <div class="road-card">
+            <h3>North-South</h3>
+            <div class="traffic-light" id="nsLight">
+              <span class="lamp red" data-color="RED"></span>
+              <span class="lamp yellow" data-color="YELLOW"></span>
+              <span class="lamp green" data-color="GREEN"></span>
+            </div>
+            <p id="nsOutput" class="big-output">--</p>
+          </div>
+          <div class="road-card">
+            <h3>East-West</h3>
+            <div class="traffic-light" id="ewLight">
+              <span class="lamp red" data-color="RED"></span>
+              <span class="lamp yellow" data-color="YELLOW"></span>
+              <span class="lamp green" data-color="GREEN"></span>
+            </div>
+            <p id="ewOutput" class="big-output">--</p>
+          </div>
+          <div class="road-card pedestrian-card">
+            <h3>Pedestrian</h3>
+            <div id="pedIcon" class="ped-icon">🚦</div>
+            <p id="pedOutput" class="big-output">--</p>
+          </div>
+        </div>
+
+        <div class="state-box">
+          <span>Current State</span>
+          <strong id="currentState">--</strong>
+          <p id="stateNote">Run simulation to view FSM output.</p>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">FPGA Controller Inputs</p>
+            <h2>Run Simulation</h2>
+          </div>
+          <button id="simulateBtn">Evaluate FSM</button>
+        </div>
+
+        <div class="form-grid">
+          <label>Simulation Cycles
+            <input type="number" id="cycles" value="24" min="1" max="500" />
+          </label>
+          <label>Start State
+            <select id="startState">
+              <option value="NS_GREEN">NS_GREEN</option>
+              <option value="NS_YELLOW">NS_YELLOW</option>
+              <option value="ALL_RED_1">ALL_RED_1</option>
+              <option value="EW_GREEN">EW_GREEN</option>
+              <option value="EW_YELLOW">EW_YELLOW</option>
+              <option value="ALL_RED_2">ALL_RED_2</option>
+              <option value="PED_WALK">PED_WALK</option>
+              <option value="EMERGENCY_ALL_RED">EMERGENCY_ALL_RED</option>
+              <option value="NIGHT_BLINK">NIGHT_BLINK</option>
+            </select>
+          </label>
+          <label>Green Time
+            <input type="number" id="greenTime" value="5" min="1" max="60" />
+          </label>
+          <label>Yellow Time
+            <input type="number" id="yellowTime" value="2" min="1" max="20" />
+          </label>
+          <label>All-Red Time
+            <input type="number" id="allRedTime" value="1" min="1" max="20" />
+          </label>
+          <label>Walk Time
+            <input type="number" id="walkTime" value="4" min="1" max="60" />
+          </label>
+        </div>
+
+        <div class="checks">
+          <label><input type="checkbox" id="nsSensor" /> NS vehicle sensor</label>
+          <label><input type="checkbox" id="ewSensor" checked /> EW vehicle sensor</label>
+          <label><input type="checkbox" id="pedRequest" /> Pedestrian request</label>
+          <label><input type="checkbox" id="emergency" /> Emergency all-red</label>
+          <label><input type="checkbox" id="nightMode" /> Night blink mode</label>
+        </div>
+
+        <div class="quick-buttons">
+          <button class="secondary scenario" data-mode="normal">Normal</button>
+          <button class="secondary scenario" data-mode="ped">Pedestrian</button>
+          <button class="secondary scenario" data-mode="emergency">Emergency</button>
+          <button class="secondary scenario" data-mode="night">Night</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid three">
+      <article class="metric"><span>Total Cycles</span><strong id="metricCycles">--</strong></article>
+      <article class="metric"><span>Final State</span><strong id="metricFinal">--</strong></article>
+      <article class="metric"><span>Safety Check</span><strong id="metricSafety">--</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Simulation Timeline</p>
+          <h2>Recent FSM Records</h2>
+        </div>
+        <div class="actions">
+          <button id="logsBtn" class="secondary">Refresh Logs</button>
+          <button id="csvBtn" class="secondary">CSV</button>
+          <button id="pdfBtn" class="secondary">PDF</button>
+          <button id="rtlBtn" class="secondary">RTL</button>
+          <button id="tbBtn" class="secondary">Testbench</button>
+          <button id="clearBtn" class="danger">Clear Logs</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cycle</th>
+              <th>State</th>
+              <th>NS</th>
+              <th>EW</th>
+              <th>Pedestrian</th>
+              <th>Safe</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody">
+            <tr><td colspan="7" class="empty">No records yet. Click Evaluate FSM.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel code-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Source Access</p>
+          <h2 id="codeTitle">RTL / Testbench Viewer</h2>
+        </div>
+        <button id="copyCodeBtn" class="secondary">Copy Code</button>
+      </div>
+      <pre id="codeBox">Click RTL or Testbench to load source code from backend.</pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>GitHub proof checklist: run simulation, capture waveform/source screenshots, download CSV/PDF report, and upload RTL + testbench.</p>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
